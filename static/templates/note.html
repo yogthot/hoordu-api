@@ -1,0 +1,39 @@
+<div class="note">
+<a class="avatar-link" href="https://misskey.io/@{{ note.user.username }}" target="_blank">
+    <img class="avatar" src="{{ note.user.avatar_url }}" />
+</a>
+
+<div class="note-content">
+    <div class="status">
+        <a href="https://misskey.io/@{{ note.user.username }}" target="_blank">
+        <span class="user-name">{{ note.user.name }}</span>
+        <span>@{{ note.user.username }}</span>
+        </a>
+        <a href="https://misskey.io/notes/{{ note.id }}" target="_blank">
+        <time class="note-time" datetime="{{ note.note_time }}">{{ note.time_ago }}</time>
+        </a>
+    </div>
+
+    <span>
+    {% if note.cw %}
+        <div class="content-warning">{{ note.cw }}</div>
+    {% endif %}
+    {{ note.text | escape | nl2br }}
+    </span>
+    <div class="images items-{{ note.files.length }}">
+    {% for file in note.files %}
+        <div class="img-bg">
+            <a href="{{ file.url }}" target="_blank"><img src="{{ file.thumbnail_url }}" /></a>
+        </div>
+    {% endfor %}
+    </div>
+    <footer>
+        <button class="react-btn" data-event="renote">
+            <i>RT</i> <span>{{ note.renote_count }}</span>
+        </button>
+        <button class="react-btn {{ 'reacted' if note.reaction is not null }}" data-event="react">
+            <i>❤️</i> <span>{{ note.react_count }}</span>
+        </button>
+    </footer>
+</div>
+</div>

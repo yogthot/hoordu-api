@@ -1,0 +1,268 @@
+:root {
+	--accent: rgb(148, 179, 0);
+	--accentDarken: rgb(106, 128, 0);
+	--accentLighten: rgb(190, 230, 0);
+	--accentedBg: rgba(148, 179, 0, 0.15);
+	--focus: rgba(148, 179, 0, 0.3);
+	--bg: rgb(37, 38, 36);
+	--acrylicBg: rgba(37, 38, 36, 0.5);
+	--fg: rgb(216, 212, 199);
+	--fgTransparentWeak: rgba(216, 212, 199, 0.75);
+	--fgTransparent: rgba(216, 212, 199, 0.5);
+	--fgHighlighted: rgb(255, 255, 255);
+	--fgOnAccent: rgb(255, 255, 255);
+	--fgOnWhite: rgb(148, 179, 0);
+	--divider: rgba(255, 255, 255, 0.14);
+	--indicator: rgb(148, 179, 0);
+	--panel: rgb(47, 47, 44);
+	--panelHighlight: rgb(55, 55, 51);
+	--panelHeaderBg: rgb(55, 55, 51);
+	--panelHeaderFg: rgb(216, 212, 199);
+	--panelHeaderDivider: rgba(0, 0, 0, 0);
+	--panelBorder: solid 1px var(--divider);
+	--acrylicPanel: rgba(47, 47, 44, 0.5);
+	--windowHeader: rgba(47, 47, 44, 0.85);
+	--popup: rgb(55, 55, 51);
+	--shadow: rgba(0, 0, 0, 0.3);
+	--header: rgba(47, 47, 44, 0.7);
+	--navBg: rgb(54, 54, 54);
+	--navFg: rgb(216, 212, 199);
+	--navHoverFg: rgb(252, 251, 250);
+	--navActive: rgb(148, 179, 0);
+	--navIndicator: rgb(148, 179, 0);
+	--link: rgb(148, 179, 0);
+	--hashtag: rgb(91, 203, 176);
+	--mention: rgb(212, 153, 76);
+	--mentionMe: rgb(212, 210, 76);
+	--renote: rgb(148, 179, 0);
+	--modalBg: rgba(0, 0, 0, 0.5);
+	--scrollbarHandle: rgba(255, 255, 255, 0.2);
+	--scrollbarHandleHover: rgba(255, 255, 255, 0.4);
+	--dateLabelFg: rgb(216, 212, 199);
+	--infoBg: rgb(37, 49, 66);
+	--infoFg: rgb(255, 255, 255);
+	--infoWarnBg: rgb(66, 50, 28);
+	--infoWarnFg: rgb(255, 189, 62);
+	--switchBg: rgba(255, 255, 255, 0.15);
+	--cwBg: rgb(104, 115, 144);
+	--cwFg: rgb(57, 63, 79);
+	--cwHoverBg: rgb(112, 123, 151);
+	--buttonBg: rgba(255, 255, 255, 0.05);
+	--buttonHoverBg: rgba(255, 255, 255, 0.1);
+	--buttonGradateA: rgb(148, 179, 0);
+	--buttonGradateB: rgb(88, 179, 0);
+	--switchOffBg: rgba(255, 255, 255, 0.1);
+	--switchOffFg: rgba(216, 212, 199, 0.8);
+	--switchOnBg: rgba(148, 179, 0, 0.15);
+	--switchOnFg: rgb(148, 179, 0);
+	--inputBorder: rgba(255, 255, 255, 0.1);
+	--inputBorderHover: rgba(255, 255, 255, 0.2);
+	--listItemHoverBg: rgba(255, 255, 255, 0.03);
+	--driveFolderBg: rgba(148, 179, 0, 0.3);
+	--wallpaperOverlay: rgba(0, 0, 0, 0.5);
+	--badge: rgb(49, 177, 206);
+	--messageBg: rgb(37, 38, 36);
+	--success: rgb(134, 179, 0);
+	--error: rgb(236, 65, 55);
+	--warn: rgb(236, 182, 55);
+	--codeString: rgb(255, 182, 117);
+	--codeNumber: rgb(207, 255, 158);
+	--codeBoolean: rgb(197, 158, 255);
+	--deckBg: rgb(0, 0, 0);
+	--htmlThemeColor: rgb(37, 38, 36);
+	--X2: rgb(42, 42, 39);
+	--X3: rgba(255, 255, 255, 0.05);
+	--X4: rgba(255, 255, 255, 0.1);
+	--X5: rgba(255, 255, 255, 0.05);
+	--X6: rgba(255, 255, 255, 0.15);
+	--X7: rgba(255, 255, 255, 0.05);
+	--X8: rgb(169, 204, 0);
+	--X9: rgb(127, 153, 0);
+	--X10: rgba(148, 179, 0, 0.4);
+	--X11: rgba(0, 0, 0, 0.3);
+	--X12: rgba(255, 255, 255, 0.1);
+	--X13: rgba(255, 255, 255, 0.15);
+	--X14: rgba(54, 54, 54, 0.5);
+	--X15: rgba(47, 47, 44, 0);
+	--X16: rgba(47, 47, 44, 0.7);
+	--X17: rgba(37, 38, 36, 0.8);
+	/*color-scheme: dark;*/
+	--modalBgFilter: blur(4px);
+	--blur: none;
+	--mk-pswp-root-z-index: 2000400;
+	
+	--c: rgb(255 255 255 / 2%);
+}
+::selection {
+	color: var(--fgOnAccent);
+	background-color: var(--accent);
+}
+
+html {
+	background: var(--bg);
+	color: var(--fg);
+	accent-color: var(--accent);
+	word-wrap: break-word;
+	word-break: break-word;
+	font-family: Hiragino Maru Gothic Pro,BIZ UDGothic,Roboto,HelveticaNeue,Arial,sans-serif;
+	font-size: 14px;
+	line-height: 1.35;
+	tab-size: 2;
+}
+a {
+  text-decoration: none;
+  cursor: pointer;
+  color: inherit;
+  tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+#notes {
+	max-width: 800px;
+	background: var(--panel);
+	border-radius: var(--radius);
+	overflow: clip;
+	
+	margin: 0 auto;
+	container-type: inline-size;
+}
+
+.note {
+	border-bottom: solid .5px var(--divider);
+	position: relative;
+	font-size: 1.05em;
+	overflow: clip;
+	contain: content;
+	padding: 28px 32px;
+	
+	display: flex;
+}
+
+.avatar-link {
+	flex-shrink: 0;
+	display: block !important;
+	margin: 0 14px 0 0;
+	width: 58px;
+	height: 58px;
+	position: sticky !important;
+	top: calc(22px + var(--stickyTop, 0px));
+	left: 0;
+}
+.avatar {
+	position: absolute;
+	inset: 0;
+	border-radius: 100%;
+	z-index: 1;
+	overflow: clip;
+	object-fit: cover;
+	width: 100%;
+	height: 100%;
+}
+
+.note-content {
+	flex: 1;
+}
+
+.images {
+	margin-top: 4px;
+	
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	grid-auto-rows: 200px;
+	grid-gap: 10px;
+}
+.images.items-1 {
+	grid-template-columns: 1fr;
+	grid-auto-rows: 400px;
+}
+.images.items-2 {
+	grid-auto-rows: 400px;
+}
+.img-bg {
+	background: var(--bg);
+	background-image: linear-gradient(45deg,var(--c) 16.67%,var(--bg) 16.67%,var(--bg) 50%,var(--c) 50%,var(--c) 66.67%,var(--bg) 66.67%,var(--bg) 100%);
+	background-size: 16px 16px;
+	
+	border-radius: 8px;
+	overflow: hidden;
+}
+.img-bg > a {
+	display: block;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+.img-bg > a > img {
+	display: block;
+	max-height: 100%;
+	width: 100%;
+	object-fit: contain;
+	
+}
+
+.status {
+	display: flex;
+	justify-content: space-between;
+	flex-flow: row no-wrap;
+}
+
+.user-name {
+  font-size: 1em;
+  font-weight: 700;
+}
+
+.note-time {
+	flex-shrink: 0;
+	font-size: .9em;
+}
+
+.content-warning::before {
+	content: "<< ";
+	color: red;
+}
+.content-warning::after {
+	content: " >>";
+	color: red;
+}
+
+footer {
+	margin-top: 4px;
+}
+button.react-btn:first-child {
+	margin-left: 28px;
+}
+button.react-btn:not(:last-child) {
+	margin-right: 28px;
+}
+button.react-btn {
+	appearance: none;
+	display: inline-block;
+	padding: 0;
+	margin: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: inherit;
+	touch-action: manipulation;
+	tap-highlight-color: transparent;
+	-webkit-tap-highlight-color: transparent;
+	font-size: 1em;
+	font-family: inherit;
+	line-height: inherit;
+	max-width: 100%;
+	
+	padding: 8px;
+	border-radius: 4px;
+	display: inline-block;
+	height: 36px;
+}
+
+button.react-btn.reacted {
+	background: var(--accent);
+}
+
+
+
