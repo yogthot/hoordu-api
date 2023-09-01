@@ -1,5 +1,4 @@
-sqlalchemy
-python-dateutil
+hoordu
 fastapi
 websockets
 uvicorn
