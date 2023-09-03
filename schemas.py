@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional, Any, Union
 from datetime import datetime
 from enum import Enum
@@ -17,8 +17,8 @@ class ParseResponse(BaseModel):
     plugin: str
     source: str
     type: DownloadType
-    id: str | None
-    options: Any | None
+    id: str | None = None
+    options: Any | None = None
 
 
 import hoordu.models as m
@@ -126,10 +126,10 @@ class Source(BaseModel):
     config: str | None
     metadata: str | None = Field(alias='metadata_')
     
-    preferred_plugin: Union['Plugin', None]
+    preferred_plugin: Union['Plugin', None] = None
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 @models.register(m.Subscription)
 class Subscription(BaseModel):
@@ -138,16 +138,16 @@ class Subscription(BaseModel):
     name: str
     options: str | None
     
-    enabled: bool | None
+    #enabled: bool | None
     metadata: str | None = Field(alias='metadata_')
     
     source_id: int | None
-    source: Source | None
+    source: Optional[Source] = None
     plugin_id: int | None
-    plugin: Union['Plugin', None]
+    plugin: Optional['Plugin'] = None
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 @models.register(m.Plugin)
@@ -155,7 +155,7 @@ class Plugin(BaseModel):
     id: int
     name: str
     source_id: int
-    source: Source | None
+    source: Optional[Source] = None
 
 @models.register(m.File)
 class File(BaseModel):
@@ -164,8 +164,6 @@ class File(BaseModel):
     local_order: int | None
     remote_id: int | None
     remote_order: int | None
-    
-    source_url: str | None
     
     file_url: str | None
     thumb_url: str | None
@@ -177,7 +175,7 @@ class File(BaseModel):
     metadata: str | None = Field(alias='metadata_')
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
     
 
 @models.register(m.Post)
@@ -185,7 +183,7 @@ class File(BaseModel):
 class Post(BaseModel):
     id: int
     source_id: int
-    source: Source | None
+    source: Optional[Source] = None
     
     original_id: str | None
     url: str | None
@@ -199,7 +197,7 @@ class Post(BaseModel):
     type: m.PostType
     metadata: str | None = Field(alias='metadata_')
     
-    related: list['Post'] | None
+    related: list['Post'] | None = None
     
     """
     favorite: bool
@@ -208,24 +206,28 @@ class Post(BaseModel):
     """
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 @models.register(m.FeedEntry)
 class FeedEntry(BaseModel):
     subscription_id: int
-    subscription: Source | None
+    subscription: Optional[Subscription] = None
     
     remote_post_id: int
-    post: Post | None
+    post: Optional[Post] = None
     
     sort_index: str
+    
+    @validator('sort_index', pre=True, allow_reuse=True)
+    def sort_index_to_string(sort_index) -> str:
+        return str(sort_index)
 
 @models.register(m.Related)
 class Related(BaseModel):
-    post: Post | None = Field(alias='remote')
+    post: Post | None = Field(alias='remote', default=None)
     
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 Source.update_forward_refs()
