@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Optional, Any, Union
 from datetime import datetime
 from enum import Enum
+import inspect as ins
 
 
 class MessageHeader(BaseModel):
@@ -22,6 +23,7 @@ class ParseResponse(BaseModel):
 
 
 import hoordu.models as m
+import hoordu.forms as f
 from sqlalchemy import inspect
 from sqlalchemy.orm.collections import InstrumentedList
 
@@ -99,15 +101,24 @@ class Models:
             return func
         return reg_conv_internal
     
+    def _find(self, d, keys):
+        for k in keys:
+            v = d.get(k, None)
+            if v is not None:
+                return v
+    
     def build(self, obj, ctx=None):
         if ctx is None:
             ctx = BuildContext()
         
-        conv = self.converters.get(type(obj))
+        classes = ins.getmro(type(obj))
+        
+        conv = self._find(self.converters, classes)
         if conv is not None:
             obj = conv(obj, ctx)
+            classes = ins.getmro(type(obj))
         
-        target = self.models.get(type(obj))
+        target = self._find(self.models, classes)
         if target is not None:
             ctx.check(obj)
             d = {k: self.build(v, ctx.push()) for k, v in obj.__dict__.items() if not k.startswith('_') and ctx.check(v)}
@@ -118,6 +129,25 @@ class Models:
 
 
 models = Models()
+
+@models.register(f.FormEntry)
+class Entry(BaseModel):
+    id: str
+    #type: str # (need to get this from the input type somehow?)
+    type: str | None
+    label: str | None
+    value: str | None
+    
+    class Config:
+        populate_by_name = True
+
+@models.register(f.Form)
+class Form(BaseModel):
+    label: str | None
+    entries: list[Union[Entry, 'Form']]
+    
+    class Config:
+        populate_by_name = True
 
 @models.register(m.Source)
 class Source(BaseModel):
@@ -173,6 +203,7 @@ class File(BaseModel):
     mime: str | None
     
     metadata: str | None = Field(alias='metadata_')
+    remote_identifier: str | None
     
     class Config:
         populate_by_name = True
@@ -197,6 +228,7 @@ class Post(BaseModel):
     type: m.PostType
     metadata: str | None = Field(alias='metadata_')
     
+    tags: list['Tag'] | None = None
     related: list['Post'] | None = None
     
     """
@@ -208,12 +240,29 @@ class Post(BaseModel):
     class Config:
         populate_by_name = True
 
+@models.register(m.Tag)
+@models.register(m.RemoteTag)
+class Tag(BaseModel):
+    id: int
+    source_id: int
+    source: Optional[Source] = None
+    
+    category: m.TagCategory | None
+    tag: str | None
+    
+    """
+    favorite: bool
+    """
+    
+    class Config:
+        populate_by_name = True
+
 @models.register(m.FeedEntry)
 class FeedEntry(BaseModel):
-    subscription_id: int
+    subscription_id: int = None
     subscription: Optional[Subscription] = None
     
-    remote_post_id: int
+    remote_post_id: int = None
     post: Optional[Post] = None
     
     sort_index: str
@@ -233,5 +282,6 @@ class Related(BaseModel):
 Source.update_forward_refs()
 Subscription.update_forward_refs()
 Post.update_forward_refs()
+Form.update_forward_refs()
 
 

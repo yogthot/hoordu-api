@@ -9,13 +9,14 @@ from datetime import datetime, timedelta
 from functools import partial
 import pathlib
 
-from fastapi import FastAPI, APIRouter, WebSocket, Depends, HTTPException, WebSocketException
+from fastapi import FastAPI, APIRouter, WebSocket, Body, Depends, HTTPException, WebSocketException
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse, Response
 from starlette.websockets import WebSocketDisconnect
 
 import hoordu
 from hoordu.models import *
+from hoordu.forms import *
 from sqlalchemy import cast, Numeric
 from sqlalchemy.orm import selectinload
 import sqlalchemy.exc as sqlexc
@@ -23,7 +24,29 @@ import sqlalchemy.exc as sqlexc
 
 import schemas as s
 from context import ContextSessionDepedency, session
-from typing import Optional
+from typing import Optional, Any
+
+
+from sqlalchemy import Table, Column, Integer, String, Text, LargeBinary, DateTime, Numeric, ForeignKey, Index, func, inspect, select, insert
+from sqlalchemy.orm import relationship, ColumnProperty, RelationshipProperty
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.asyncio import async_object_session
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy_fulltext import FullText
+from sqlalchemy_utils import ChoiceType
+
+
+class Gallery(Base):
+    __tablename__ = 'gallery'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(Text)
+    post_id = Column(Integer, ForeignKey('remote_post.id', ondelete='CASCADE'))
+
+    post = relationship('RemotePost')
+
+
 
 
 def create_api(hrd: hoordu.hoordu) -> APIRouter:
@@ -52,6 +75,8 @@ def create_api(hrd: hoordu.hoordu) -> APIRouter:
         orig = convert_url(orig)
         thumb = convert_url(thumb)
         
+        hash = file.hash.hex() if file.hash is not None else None
+        
         return s.File(
             id=file.id,
             
@@ -63,24 +88,33 @@ def create_api(hrd: hoordu.hoordu) -> APIRouter:
             file_url=orig,
             thumb_url=thumb,
             
-            hash=file.hash.hex(),
+            hash=hash,
             filename=file.filename,
             
             mime=file.mime,
             metadata=file.metadata_,
+            remote_identifier=file.remote_identifier,
         )
     
     @s.models.register_converter(Related)
-    def convert_file(related: Related, ctx) -> s.Post:
+    def convert_related(related: Related, ctx) -> s.Post:
         if related.remote is not None:
             return s.models.build(related.remote)
         else:
             return None
     
+    @s.models.register_converter(FormEntry)
+    def convert_entry(entry: FormEntry, ctx) -> s.Entry:
+        return s.Entry(
+            id=entry.id,
+            type=type(entry).__name__,
+            label=entry.label,
+            value=entry.value,
+        )
+    
     @api.get('/parse')
     async def parse(url: str) -> list[s.ParseResponse]:
         parsed = await hrd.parse_url(url)
-        
         l = []
         for p, o in parsed:
             dl_type = s.DownloadType.Post
@@ -224,6 +258,49 @@ def create_api(hrd: hoordu.hoordu) -> APIRouter:
         
         return s.models.build(plugin)
     
+    
+    @api.get('/plugin/{plugin_name}/config')
+    async def get_plugin_config(plugin_name: str) -> s.Form:
+        success, form = await hrd.setup_plugin(plugin_name, parameters=None)
+        if form is None:
+            plugin = await session.plugin(plugin_name)
+            form = plugin.config_form()
+            form.fill(plugin.config)
+        
+        return s.models.build(form)
+    
+    @api.post('/plugin/{plugin_name}/config')
+    async def update_plugin_config(plugin_name: str, params: Any = Body(...)) -> s.Form:
+        success, form = await hrd.setup_plugin(plugin_name, parameters=params)
+        if form is None:
+            plugin = await session.plugin(plugin_name)
+            form = plugin.config_form()
+            form.fill(plugin.config)
+        
+        # TODO success?
+        # error response?
+        return s.models.build(form)
+    
+    
+    @api.get('/post/{post_id}')
+    async def get_post_by_id(post_id: int) -> s.Post:
+        post = await session.select(RemotePost) \
+                .where(
+                    RemotePost.id == post_id,
+                ) \
+                .options(
+                    selectinload(RemotePost.source),
+                    selectinload(RemotePost.files),
+                    selectinload(RemotePost.tags),
+                ) \
+                .one_or_none()
+        
+        if post is None:
+            raise HTTPException(status_code=404, detail=f'Post id {post_id} not found')
+        
+        #return s.build(s.Post, post)
+        return s.models.build(post)
+    
     @api.get('/source/{source_name}/post/{original_id}')
     async def get_post(source_name: str, original_id: str) -> s.Post:
         source = await session.select(Source) \
@@ -241,6 +318,7 @@ def create_api(hrd: hoordu.hoordu) -> APIRouter:
                 .options(
                     selectinload(RemotePost.source),
                     selectinload(RemotePost.files),
+                    selectinload(RemotePost.tags),
                 ) \
                 .one_or_none()
         
@@ -250,19 +328,11 @@ def create_api(hrd: hoordu.hoordu) -> APIRouter:
         #return s.build(s.Post, post)
         return s.models.build(post)
     
-    @api.get('/source/{source_name}/post/{original_id}/related')
-    async def get_post_related(source_name: str, original_id: str) -> list[s.Post]:
-        source = await session.select(Source) \
-                .where(Source.name == source_name) \
-                .one_or_none()
-        
-        if source is None:
-            raise HTTPException(status_code=404, detail=f'Source "{source_name}" not found')
-        
+    @api.get('/post/{post_id}/related')
+    async def get_post_related(post_id: int) -> list[s.Post]:
         post = await session.select(RemotePost) \
                 .where(
-                    RemotePost.source_id == source.id,
-                    RemotePost.original_id == original_id,
+                    RemotePost.id == post_id,
                 ) \
                 .one_or_none()
         
@@ -277,12 +347,109 @@ def create_api(hrd: hoordu.hoordu) -> APIRouter:
                 .options(
                     selectinload(RemotePost.source),
                     selectinload(RemotePost.files),
+                    selectinload(RemotePost.tags),
                 ) \
                 .all()
         
         return s.models.build(related_posts)
     
-    # need a numeric sort index for paging, otherwise the response is 16MB
+    @api.get('/gallery/{name}')
+    async def all_posts(
+            name: str,
+            count: int = 20,
+            until: Optional[int] = None
+        ) -> list[s.FeedEntry]:
+        
+        q_posts = session.select(Gallery) \
+                        .join(RemotePost) \
+                        .where(Gallery.name == name)
+        
+        if until is not None:
+            q_posts = q_posts \
+                    .where(
+                        Gallery.id < cast(until, Numeric)
+                    )
+        
+        q_posts = q_posts \
+                .order_by(Gallery.id.desc()) \
+                .limit(count) \
+                .options(
+                    selectinload(Gallery.post).selectinload(RemotePost.files),
+                    selectinload(Gallery.post).selectinload(RemotePost.source),
+                    selectinload(Gallery.post) \
+                        .selectinload(RemotePost.related) \
+                        .selectinload(Related.remote) \
+                        .selectinload(RemotePost.files),
+                )
+        
+        posts = await q_posts.all()
+        
+        return s.models.build([FeedEntry(sort_index=x.id, post=x.post) for x in posts])
+    
+    @api.get('/random')
+    async def all_posts(
+            count: int = 20,
+            until: Optional[int] = None
+        ) -> list[s.FeedEntry]:
+        
+        q_posts = session.select(RemotePost) \
+                .order_by(func.random()) \
+                .limit(count) \
+                .options(
+                    selectinload(RemotePost.files),
+                    selectinload(RemotePost.source),
+                    selectinload(RemotePost.related) \
+                        .selectinload(Related.remote) \
+                        .selectinload(RemotePost.files),
+                )
+        
+        posts = await q_posts.all()
+        
+        return s.models.build([FeedEntry(sort_index=x.id, post=x) for x in posts])
+    
+    @api.get('/source/{source_name}/posts')
+    async def get_source_posts(
+            source_name: str,
+            count: int = 20,
+            until: Optional[int] = None
+        ) -> list[s.FeedEntry]:
+        
+        source = await session.select(Source) \
+                .where(Source.name == source_name) \
+                .options(
+                    selectinload(Source.preferred_plugin),
+                ) \
+                .one_or_none()
+        
+        if source is None:
+            raise HTTPException(status_code=404, detail=f'Source "{source_name}" not found')
+        
+        q_posts = session.select(RemotePost) \
+                .where(
+                    RemotePost.source_id == source.id
+                )
+        
+        if until is not None:
+            q_posts = q_posts \
+                    .where(
+                        RemotePost.id < cast(until, Numeric)
+                    )
+        
+        q_posts = q_posts \
+                .order_by(RemotePost.id.desc()) \
+                .limit(count) \
+                .options(
+                    selectinload(RemotePost.files),
+                    selectinload(RemotePost.tags),
+                    selectinload(RemotePost.related) \
+                        .selectinload(Related.remote) \
+                        .selectinload(RemotePost.files),
+                )
+        
+        posts = await q_posts.all()
+        
+        return s.models.build([FeedEntry(sort_index=x.id, post=x) for x in posts])
+    
     @api.get('/source/{source_name}/subscription/{subscription_name}/feed')
     async def subscription_feed(
             source_name: str,
@@ -312,19 +479,20 @@ def create_api(hrd: hoordu.hoordu) -> APIRouter:
                 .join(RemotePost) \
                 .where(
                     FeedEntry.subscription_id == subscription.id
-                ) \
+                )
         
         if until is not None:
             q_posts = q_posts \
                     .where(
                         FeedEntry.sort_index < cast(until, Numeric)
-                    ) \
+                    )
         
         q_posts = q_posts \
                 .order_by(FeedEntry.sort_index.desc()) \
                 .limit(count) \
                 .options(
                     selectinload(FeedEntry.post).selectinload(RemotePost.files),
+                    selectinload(FeedEntry.post).selectinload(RemotePost.tags),
                     selectinload(FeedEntry.post) \
                         .selectinload(RemotePost.related) \
                         .selectinload(Related.remote) \
@@ -379,6 +547,7 @@ def create_api(hrd: hoordu.hoordu) -> APIRouter:
                 .limit(count) \
                 .options(
                     selectinload(FeedEntry.post).selectinload(RemotePost.files),
+                    selectinload(FeedEntry.post).selectinload(RemotePost.tags),
                     selectinload(FeedEntry.post) \
                         .selectinload(RemotePost.related) \
                         .selectinload(Related.remote) \
@@ -405,6 +574,43 @@ def create_api(hrd: hoordu.hoordu) -> APIRouter:
                         
                     case 'stop':
                         break
+    
+    
+    @api.get('/search')
+    async def search_remote(
+            query: str,
+            count: int = 20,
+            until: Optional[int] = None
+        ) -> list[s.FeedEntry]:
+        
+        q_posts = session.select(RemotePost) \
+                .join(remote_post_tag) \
+                .join(RemoteTag) \
+                .where(
+                    RemoteTag.tag == query
+                )
+        
+        if until is not None:
+            q_posts = q_posts \
+                    .where(
+                        RemotePost.id < cast(until, Numeric)
+                    ) \
+        
+        q_posts = q_posts \
+                .order_by(RemotePost.id.desc()) \
+                .limit(count) \
+                .options(
+                    selectinload(RemotePost.files),
+                    selectinload(RemotePost.tags),
+                    selectinload(RemotePost.source),
+                    selectinload(RemotePost.related) \
+                        .selectinload(Related.remote) \
+                        .selectinload(RemotePost.files),
+                )
+        
+        posts = await q_posts.all()
+        
+        return s.models.build([FeedEntry(sort_index=x.id, post=x) for x in posts])
     
     return api
 
